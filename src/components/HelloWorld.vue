@@ -17,7 +17,7 @@
           v-model="file"
           :state="Boolean(file)"
           directory
-          placeholder="Choose a file or drop it here..."
+          :placeholder="path"
           drop-placeholder="Drop file here..."
         ></b-form-file>
       </b-col>
@@ -37,6 +37,9 @@
 </template>
 
 <script>
+import axios from 'axios';
+import Echo from 'laravel-echo';
+window.io = require('socket.io-client');
 var watch = require('node-watch');
 const fs = require("fs");
 
@@ -48,9 +51,9 @@ export default {
   data() {
     return {
       dir: [],
-      username: '',
+      username: 'usuario',
       file: null,
-      path: null,
+      path: '/home/david/Documentos/Proyecto',
       watcher: null,
     };
   },
@@ -59,12 +62,14 @@ export default {
       return d;
     },
     watchPath(path) {
+      if (!path) {
+        return;
+      }
       if (this.watcher) {
         this.watcher.close();
       }
-      watch(path, { recursive: true }, function(evt, name) {
-        console.log('%s changed.', name);
-        this.dir.push(this.fileInfo(path));
+      watch(path, { recursive: true }, (evt, name) => {
+        this.dir.push({...this.fileInfo(name), evt});
       });
     },
     fileInfo(path) {
@@ -72,30 +77,12 @@ export default {
       try {
         time = fs.statSync(path).mtime.getTime();
       } catch (e) {
-        e;
+        time = new Date().getTime();
       }
       return {
         name: path.substr(this.path.length),
         time,
       };
-    },
-    listPath(dir) {
-      fs.readdir(dir, (err, files) => {
-        this.dir = files.map(function (fileName) {
-          let time;
-          try {
-            time = fs.statSync(dir + '/' + fileName).mtime.getTime();
-          } catch (e) {
-            e;
-          }
-          return {
-            name: fileName,
-            time,
-          };
-        })
-        .sort(function (a, b) {
-          return a.time - b.time; });
-      });
     },
   },
   watch: {
@@ -104,10 +91,20 @@ export default {
     },
     path(path) {
       this.watchPath(path);
-      this.listPath(path);
+    },
+    joinEcho(host, key) {
+      window.Echo = new Echo({
+          broadcaster: 'socket.io',
+          host,
+          key,
+      });
     },
   },
   mounted() {
+    this.watchPath(this.path);
+    axios.get('http://localhost:8000/api/hello/' + this.username).then(res => {
+      console.log(res.data);
+    });
   },
 }
 </script>
