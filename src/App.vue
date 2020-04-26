@@ -1,11 +1,10 @@
 <template>
-  <div id="app">
-    <router-view></router-view>
+  <div class="app">
+    <router-view ref="current"></router-view>
   </div>
 </template>
 
 <script>
-
 export default {
   name: 'App',
 }
@@ -17,7 +16,7 @@ html, body {
   height: 100vh;
   overflow: hidden;
 }
-#app {
+.app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

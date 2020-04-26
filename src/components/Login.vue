@@ -50,10 +50,11 @@ export default {
         window.axios.defaults.headers.common = {
           "X-ClientLogin": res.data.token
         };
+        this.$root.joinEcho(res.data);
         this.$emit('input', this.username);
         this.$emit('login', res.data);
       }).catch(err => {
-        this.error = err.response.data.message;
+        this.error = err.response && err.response.data && err.response.data.message || err.message;
       });
     },
   },

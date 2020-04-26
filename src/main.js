@@ -43,7 +43,37 @@ window.axios = axios0.create({
   baseURL: 'http://localhost:8000/api',
 });
 
+import Echo from 'laravel-echo';
+
+window.io = require('socket.io-client');
+
 new Vue({
   router,
   render: h => h(App),
+  data() {
+    return {
+      userId: null,
+    };
+  },
+  methods: {
+    joinEcho({BROADCASTER_HOST, BROADCASTER_KEY, userId, token}) {
+      this.userId = userId;
+      window.Echo = new Echo({
+        broadcaster: 'socket.io',
+        host: BROADCASTER_HOST,
+        key: BROADCASTER_KEY,
+        auth: {
+          headers: {
+            'X-ClientLogin': token,
+          }
+        }
+      });
+      window.Echo.private(`App.User.${this.$root.userId}`)
+      .listen('.App.Events.IssuesUpdated', (e) => {
+        if (this.$children[0].$refs.current.IssuesUpdated instanceof Function) {
+          this.$children[0].$refs.current.IssuesUpdated(e);
+        }
+      });
+    },
+  }
 }).$mount('#app');

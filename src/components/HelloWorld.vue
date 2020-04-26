@@ -19,7 +19,7 @@
               :disabled="!estaPendiente(issue)"
               size="sm" variant="light" @click="completeIssue(issue)"
             >
-              x
+              <font-awesome-icon icon="check" />
             </b-button>
             {{ issue.name }}
             <div class="badge badge-light">
@@ -60,9 +60,6 @@
 </template>
 
 <script>
-import Echo from 'laravel-echo';
-
-window.io = require('socket.io-client');
 var watch = require('node-watch');
 const fs = require("fs");
 const path = require("path");
@@ -87,6 +84,10 @@ export default {
     };
   },
   methods: {
+    IssuesUpdated() {
+      this.loadIssues();
+    },
+    ///
     archivo(issue) {
       if (this.uploading.includes(issue.meta.entregable)) {
         return { icon: "upload", class: "blink", title: "Archivo esta siendo enviado..." };
@@ -148,7 +149,7 @@ export default {
       const buffer = fs.readFileSync(path);
       const content = new Uint8Array(buffer);
       let formData = new FormData();
-      formData.append("file", new Blob([content]), "mapa.jpg");
+      formData.append("file", new Blob([content]), file);
       this.uploading.push(file);
       window.axios.post( '/uploadfile',
         formData,
@@ -192,7 +193,8 @@ export default {
         issue,
         data,
       }).then(() => {
-        this.loadIssues();
+        // se esperara a refresh del socket.
+        // this.loadIssues();
       });
     },
     fileInfo(path) {
@@ -232,13 +234,6 @@ export default {
         this.loadingIssues = false;
       });
     },
-    joinEcho(host, key) {
-      window.Echo = new Echo({
-          broadcaster: 'socket.io',
-          host,
-          key,
-      });
-    },
   },
   watch: {
     username() {
@@ -252,32 +247,6 @@ export default {
     this.watchPath(this.path);
     this.loadIssues();
     window.$vm0 = this;
-/*
-    const path = '/home/david/Documentos/Proyecto/mapa.jpg';
-    const buffer = fs.readFileSync(path);
-    window.bb = buffer;
-    const file = new Uint8Array(buffer);
-    //const cc = [atob(buffer.toString('base64'))];//Uint8Array.from(buffer).buffer;
-    //const file =  new Blob(cc, {type: 'image/jpg'}); //new File(cc, path);
-    console.log(file);
-      let formData = new FormData();
-      //formData.append('file', file);
-      //this.uploading.push(file);
-    formData.append("file", new Blob([file]), "mapa.jpg");
-    window.axios.post( '/uploadfile',
-        formData,
-        {
-          headers: {
-              'Content-Type': 'multipart/form-data'
-          }
-        }
-      ).then((upload) => {
-        console.log(upload.data);
-      })
-      .catch((err) => {
-        console.log('FAILURE!!', err);
-      });
-      */
   },
 }
 </script>
