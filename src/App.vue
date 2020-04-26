@@ -1,24 +1,29 @@
 <template>
   <div id="app">
-    <HelloWorld msg="Hola mundo"/>
+    <router-view></router-view>
   </div>
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
 
 export default {
   name: 'App',
-  components: {
-    HelloWorld
-  }
 }
 </script>
 
 <style>
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
 #app {
   font-family: Avenir, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  width: 100vw;
+  height: 100vh;
+  overflow: auto;
+  background-color: #FFFF99;
 }
 </style>

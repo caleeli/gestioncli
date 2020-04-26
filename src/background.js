@@ -1,6 +1,7 @@
 'use strict'
 
-import { app, protocol, BrowserWindow } from 'electron'
+import { app, protocol, BrowserWindow, Menu } from 'electron'
+import setupMenu from './menu'
 import {
   createProtocol,
   /* installVueDevtools */
@@ -13,10 +14,11 @@ let win
 
 // Scheme must be registered before the app is ready
 protocol.registerSchemesAsPrivileged([{scheme: 'app', privileges: { secure: true, standard: true } }])
+setupMenu({app, Menu});
 
 function createWindow () {
   // Create the browser window.
-  win = new BrowserWindow({ width: 800, height: 600, webPreferences: {
+  win = new BrowserWindow({ width: 400, height: 600, webPreferences: {
     nodeIntegration: true
   } })
 
