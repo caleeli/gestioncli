@@ -92,7 +92,7 @@ export default {
         return { icon: "upload", class: "blink", title: "Archivo esta siendo enviado..." };
       }
       if (issue.meta.entregable_upload) {
-        return { icon: "share-alt", title: "Archivo fue compartido con el revisor" };
+        return { icon: "share-alt", title: "Archivo fue enviado correctamente" };
       }
       const path = this.getWorkingPath(issue.meta.entregable);
       if (fs.existsSync(path)) {
@@ -146,8 +146,9 @@ export default {
         return false;
       }
       const buffer = fs.readFileSync(path);
+      const content = new Uint8Array(buffer);
       let formData = new FormData();
-      formData.append('file', new File([buffer.toString()], path));
+      formData.append("file", new Blob([content]), "mapa.jpg");
       this.uploading.push(file);
       window.axios.post( '/uploadfile',
         formData,
@@ -251,6 +252,32 @@ export default {
     this.watchPath(this.path);
     this.loadIssues();
     window.$vm0 = this;
+/*
+    const path = '/home/david/Documentos/Proyecto/mapa.jpg';
+    const buffer = fs.readFileSync(path);
+    window.bb = buffer;
+    const file = new Uint8Array(buffer);
+    //const cc = [atob(buffer.toString('base64'))];//Uint8Array.from(buffer).buffer;
+    //const file =  new Blob(cc, {type: 'image/jpg'}); //new File(cc, path);
+    console.log(file);
+      let formData = new FormData();
+      //formData.append('file', file);
+      //this.uploading.push(file);
+    formData.append("file", new Blob([file]), "mapa.jpg");
+    window.axios.post( '/uploadfile',
+        formData,
+        {
+          headers: {
+              'Content-Type': 'multipart/form-data'
+          }
+        }
+      ).then((upload) => {
+        console.log(upload.data);
+      })
+      .catch((err) => {
+        console.log('FAILURE!!', err);
+      });
+      */
   },
 }
 </script>
