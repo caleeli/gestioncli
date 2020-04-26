@@ -22,6 +22,43 @@
         ></b-form-file>
       </b-col>
     </b-row>
+    <h3>Tareas</h3>
+    <b-card v-for="issue in issues" :key="`issue-${issue.id}`" bg-variant="warning">
+      <div class="d-flex">
+        <div class="mr-2">
+          <div class="badge badge-light">
+            {{ issue.status }}
+          </div>
+        </div>
+        <div class="flex-grow-1">
+          {{ issue.name }}
+          <div v-if="issue.meta.entregable" class="badge badge-light">
+            <i class="far fa-hdd"></i>
+            {{ issue.meta.entregable }}
+          </div>
+        </div>
+        <b-button v-if="issue.meta.entregable && issue.status!=='revision'"
+
+          variant="success"
+          size="sm"
+          @click="subirArchivo(issue, issue.meta.entregable)">
+          Subir archivo
+        </b-button>
+        <b-button v-if="issue.status==='revision'"
+          variant="success"
+          size="sm"
+          @click="aceptarTarea(issue)">
+          Aceptar
+        </b-button>
+        <b-button v-if="issue.status==='revision'"
+          variant="danger"
+          size="sm"
+          @click="rechazarTarea(issue)">
+          Rechazar
+        </b-button>
+      </div>
+    </b-card>
+    <h3>Registro</h3>
     <b-table striped hover :items="dir">
       <template v-slot:head(name)>
         <div class="text-nowrap">Nombre</div>
@@ -37,11 +74,14 @@
 </template>
 
 <script>
-import axios from 'axios';
+import axios0 from 'axios';
 import Echo from 'laravel-echo';
 window.io = require('socket.io-client');
 var watch = require('node-watch');
 const fs = require("fs");
+const axios = axios0.create({
+  baseURL: 'http://localhost:8000',
+});
 
 export default {
   name: 'HelloWorld',
@@ -55,9 +95,38 @@ export default {
       file: null,
       path: '/home/david/Documentos/Proyecto',
       watcher: null,
+      entregables: [],
+      issues: [],
+      uploadPath: '',
     };
   },
   methods: {
+    aceptarTarea(issue) {
+      this.notificar('aceptar', issue, {});
+    },
+    rechazarTarea(issue) {
+      this.notificar('rechazar', issue, {});
+    },
+    subirArchivo(issue, file) {
+      const path = this.path + '/' + file;
+      const buffer = fs.readFileSync(path);
+      console.log(buffer);
+      let formData = new FormData();
+      formData.append('file', new File([buffer.toString()], path));
+      axios.post( '/api/uploadfile',
+        formData,
+        {
+          headers: {
+              'Content-Type': 'multipart/form-data'
+          }
+        }
+      ).then((upload) => {
+        this.notificar('upload', issue, upload.data);
+      })
+      .catch((err) => {
+        console.log('FAILURE!!', err);
+      });
+    },
     format (d) {
       return d;
     },
@@ -69,7 +138,22 @@ export default {
         this.watcher.close();
       }
       watch(path, { recursive: true }, (evt, name) => {
-        this.dir.push({...this.fileInfo(name), evt});
+        const file = {...this.fileInfo(name), evt};
+        const entregable = this.entregables.find(e => e.entregable === file.name);
+        if (entregable) {
+          this.notificar('change', entregable.issue, file);
+        }
+        this.dir.push(file);
+      });
+    },
+    notificar(type, issue, data) {
+      axios.post('/api/notificar', {
+        type,
+        issue,
+        data,
+      }).then((res) => {
+        console.log(res);
+        this.loadIssues();
       });
     },
     fileInfo(path) {
@@ -80,9 +164,26 @@ export default {
         time = new Date().getTime();
       }
       return {
-        name: path.substr(this.path.length),
+        name: path.substr(this.path.length + 1),
+        path,
         time,
       };
+    },
+    loadIssues() {
+      this.issues.splice(0);
+      axios.get('/api/hello/' + this.username).then(res => {
+        res.data.issues.forEach(issue => {
+          this.issues.push(issue);
+          if (issue.status==='pendiente' || issue.status==='progreso') {
+            if (issue.meta.entregable) {
+              this.entregables.push({
+                entregable: issue.meta.entregable,
+                issue,
+              });
+            }
+          }
+        });
+      });
     },
   },
   watch: {
@@ -102,9 +203,8 @@ export default {
   },
   mounted() {
     this.watchPath(this.path);
-    axios.get('http://localhost:8000/api/hello/' + this.username).then(res => {
-      console.log(res.data);
-    });
+    this.loadIssues();
+    window.$vm0 = this;
   },
 }
 </script>
