@@ -3,21 +3,36 @@
     <login v-if="!username" v-model="username" @login="login" />
     <workspace v-else-if="!path" v-model="path" />
     <div v-else>
-      <h4>Tareas</h4>
+      <div class="border-bottom mb-2 p-2 d-flex justify-content-between align-items-center">
+        <b>MIS TAREAS</b>
+        <div>
+          <b-button size="sm" variant="outline-secondary" @click="loadIssues">
+            <font-awesome-icon icon="sync" :spin="loadingIssues" />
+          </b-button>
+        </div>
+      </div>
       <div v-for="issue in issues" :key="`issue-${issue.id}`" bg-variant="warning">
-        <div class="d-flex">
-          <div class="mr-2">
+        <div class="d-flex mb-1">
+          <div class="flex-grow-1">
+            <b-button class="border border-dark"
+              :class="{'text-transparent': estaPendiente(issue)}"
+              :disabled="!estaPendiente(issue)"
+              size="sm" variant="light" @click="completeIssue(issue)"
+            >
+              x
+            </b-button>
+            {{ issue.name }}
             <div class="badge badge-light">
               {{ issue.status }}
             </div>
           </div>
-          <div class="flex-grow-1">
-            {{ issue.name }}
-            <div v-if="issue.meta.entregable" class="badge badge-light">
-              <i class="far fa-hdd"></i>
+          <div class="align-self-center">
+            <label v-if="issue.meta.entregable" class="badge badge-light" :title="archivo(issue).title">
+              <font-awesome-icon v-bind="archivo(issue)" />
               {{ issue.meta.entregable }}
-            </div>
+            </label>
           </div>
+          <!--
           <b-button v-if="issue.meta.entregable && issue.status!=='revision'"
 
             variant="success"
@@ -37,6 +52,7 @@
             @click="rechazarTarea(issue)">
             Rechazar
           </b-button>
+          -->
         </div>
       </div>
     </div>
@@ -49,6 +65,7 @@ import Echo from 'laravel-echo';
 window.io = require('socket.io-client');
 var watch = require('node-watch');
 const fs = require("fs");
+const path = require("path");
 
 export default {
   path: '/',
@@ -63,15 +80,56 @@ export default {
       path: '',
       watcher: null,
       entregables: [],
+      loadingIssues: false,
       issues: [],
       uploadPath: '',
+      uploading: [],
     };
   },
   methods: {
+    archivo(issue) {
+      if (this.uploading.includes(issue.meta.entregable)) {
+        return { icon: "upload", class: "blink", title: "Archivo esta siendo enviado..." };
+      }
+      if (issue.meta.entregable_upload) {
+        return { icon: "share-alt", title: "Archivo fue compartido con el revisor" };
+      }
+      const path = this.getWorkingPath(issue.meta.entregable);
+      if (fs.existsSync(path)) {
+        return { icon: "hdd", title: "Archivo encontrado en el directorio de trabajo" };
+      } else {
+        return { icon: "exclamation-circle", title: "Archivo no se enceuntra en el directorio de trabajo" };
+      }
+    },
+    estaPendiente(issue) {
+      return issue.status==='pendiente' || issue.status==='progreso';
+    },
+    completeIssue(issue) {
+      const inicial = issue.status;
+      issue.status = issue.status === 'pendiente' || issue.status === 'progreso' ? 'revision' : issue.status;
+      if (issue.meta.entregable) {
+        if (confirm('Al completar la tarea se enviará el archivo requerido.\n\n'
+          + this.getWorkingPath(issue.meta.entregable)
+          +'\n\n¿Desea continuar?')) {
+          if (!this.subirArchivo(issue, issue.meta.entregable)) {
+            alert(
+              'No se puede completar la tarea, esta tarea require el archivo: \n\n'
+              + this.getWorkingPath(issue.meta.entregable)
+            );
+            issue.status = inicial;
+          }
+        }
+      } else {
+        this.completarTarea(issue);
+      }
+    },
     login(login) {
       if (login.workspace) {
         this.path = login.workspace;
       }
+    },
+    completarTarea(issue) {
+      this.notificar('completar', issue, {});
     },
     aceptarTarea(issue) {
       this.notificar('aceptar', issue, {});
@@ -79,13 +137,19 @@ export default {
     rechazarTarea(issue) {
       this.notificar('rechazar', issue, {});
     },
+    getWorkingPath(file) {
+      return path.join(this.path, file);
+    },
     subirArchivo(issue, file) {
-      const path = this.path + '/' + file;
+      const path = this.getWorkingPath(file);
+      if (!fs.existsSync(path)) {
+        return false;
+      }
       const buffer = fs.readFileSync(path);
-      console.log(buffer);
       let formData = new FormData();
       formData.append('file', new File([buffer.toString()], path));
-      window.axios.post( '/api/uploadfile',
+      this.uploading.push(file);
+      window.axios.post( '/uploadfile',
         formData,
         {
           headers: {
@@ -93,11 +157,14 @@ export default {
           }
         }
       ).then((upload) => {
+        this.uploading = this.uploading.filter(f => f !== file);
         this.notificar('upload', issue, upload.data);
       })
       .catch((err) => {
+        this.uploading = this.uploading.filter(f => f !== file);
         console.log('FAILURE!!', err);
       });
+      return true;
     },
     format (d) {
       return d;
@@ -123,8 +190,7 @@ export default {
         type,
         issue,
         data,
-      }).then((res) => {
-        console.log(res);
+      }).then(() => {
         this.loadIssues();
       });
     },
@@ -145,9 +211,12 @@ export default {
       if (!this.username) {
         return;
       }
-      this.issues.splice(0);
+      this.loadingIssues = true;
       window.axios.get('/hello/' + this.username).then(res => {
+        this.issues.splice(0);
+        this.loadingIssues = false;
         res.data.issues.forEach(issue => {
+          issue.completed = issue.status !== 'pendiente';
           this.issues.push(issue);
           if (issue.status==='pendiente' || issue.status==='progreso') {
             if (issue.meta.entregable) {
@@ -158,6 +227,8 @@ export default {
             }
           }
         });
+      }).catch(() => {
+        this.loadingIssues = false;
       });
     },
     joinEcho(host, key) {
@@ -185,4 +256,7 @@ export default {
 </script>
 
 <style scoped>
+.text-transparent {
+  color: transparent;
+}
 </style>

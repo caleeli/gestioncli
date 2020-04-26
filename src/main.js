@@ -4,6 +4,9 @@ import { BootstrapVue } from 'bootstrap-vue';
 import 'bootstrap/dist/css/bootstrap.css';
 import 'bootstrap-vue/dist/bootstrap-vue.css';
 import VueRouter from 'vue-router';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { fas } from '@fortawesome/free-solid-svg-icons';
 
 const moment = require('moment')
 require('moment/locale/es')
@@ -11,6 +14,8 @@ require('moment/locale/es')
 Vue.use(require('vue-moment'), {
     moment
 })
+library.add(fas);
+Vue.component('font-awesome-icon', FontAwesomeIcon)
 
 /**
  * Modules
