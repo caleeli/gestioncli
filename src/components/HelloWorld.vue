@@ -4,7 +4,10 @@
     <workspace v-else-if="!path" v-model="path" />
     <div v-else>
       <div class="border-bottom mb-2 p-2 d-flex justify-content-between align-items-center">
-        <b>MIS TAREAS</b>
+        <div>
+          <b-button variant="warning">MIS TAREAS</b-button>
+          <b-button :href="$root.home" target="_blank" variant="outline-info">VER TODAS</b-button>
+        </div>
         <div>
           <b-button size="sm" variant="outline-secondary" @click="loadIssues">
             <font-awesome-icon icon="sync" :spin="loadingIssues" />

@@ -23,6 +23,6 @@ export default function({ app, Menu }) {
   ]
   
   const menu = Menu.buildFromTemplate(template)
-  Menu.setApplicationMenu(menu)
+  Menu.setApplicationMenu(menu && null)
   
 }

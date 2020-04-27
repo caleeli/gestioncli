@@ -39,8 +39,10 @@ Vue.use(BootstrapVue);
 Vue.use(VueRouter);
 
 import axios0 from 'axios';
+const home = 'http://localhost:8000';
+
 window.axios = axios0.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: home + '/api',
 });
 
 import Echo from 'laravel-echo';
@@ -53,6 +55,7 @@ new Vue({
   data() {
     return {
       userId: null,
+      home: home + '/login',
     };
   },
   methods: {
